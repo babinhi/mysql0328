@@ -169,10 +169,10 @@ select * from emp where ename like '%m';
 select * from emp where ename like '%m%';  -- → 출력
 -- m의 앞뒤로 몇글자가 오든지 상관은 없는 이름 (m이 들어가는 이름)
 
-select * from emp where ename like '_%m'; 
+select * from emp where ename like '_m%'; 
 -- m이라는 글자가 2번째에 있는 이름
 
-select * from emp where ename like '__%m'; 
+select * from emp where ename like '__m%'; 
 -- m이라는 글자가 3번째에 있는 이름 
 
 -- 81년 4월 1일 이후 입사한 사원 조회
@@ -470,8 +470,339 @@ id bigint,
 member_email varchar(20) not null unique,
 member_password varchar(10) not null,
 member_created_date datetime default now(),
-constraint pk_member8 primary key(id) -- 지정하겠다 primary key를 member8의 id에
+constraint pk_member8 primary key(id) -- 지정하겠다 primary key를 member8의 id에/ constraint (제약(이 되는것 =restriction)
 );
 select * from member8;
 
 select * from information_schema.table_constraints;
+
+-- 20230330 
+-- 참조관계 
+-- 게시판과 댓글의 관계
+
+drop table if exists board1;
+
+create table board1(
+	id bigint,
+    board_writer varchar(20) not null, -- 작성자
+    board_contents varchar(500), -- 내용
+    constraint pk_board1 primary key(id)
+);
+
+drop table if exists comment1;
+create table comment1(
+	id bigint,
+    comment_writer varchar(20) not null, -- 댓글 작성자
+    comment_contents varchar(200), -- 댓글 내용
+    board1_id bigint, -- 어떤 게시글에 작성된 댓글인지 글번호 정보가 필요
+    -- 댓글 테이블(comment1)의 pk 지정
+    constraint pk_comment1 primary key(id),
+    -- 참조관계 지정을 위해 comment1 테이블의 board1_id 컬럼을
+    -- board1 테이블의id 컬럼을 참조하는 관계로 정의
+    constraint fk_comment1 foreign key(board1_id) references board1(id)
+);
+    
+insert into board1 (id, board_writer, board_contents)
+	values(1, 'writer1', 'contents1');
+insert into board1 (id, board_writer, board_contents)
+	values(2, 'writer2', 'contents2');
+insert into board1 (id, board_writer, board_contents)
+	values(3, 'writer3', 'contents3');
+insert into board1 (id, board_writer, board_contents)
+	values(4, 'writer4', 'contents4');
+    
+select * from board1;
+    
+-- 댓글데이터 저장
+insert into comment1(id, comment_writer, comment_contents, board1_id)
+	values(1, 'c writer1', 'c contents1', 1);
+    
+    -- 1번 게시글에 대한 2번째 댓글
+insert into comment1(id, comment_writer, comment_contents, board1_id)
+	values(2, 'c writer2', 'c contents2', 1);
+    
+-- 2번 게시글에 대한 댓글
+insert into comment1(id, comment_writer, comment_contents, board1_id)
+	values(3, 'c writer3', 'c contents3', 2);
+    
+    -- 5번 게시글에 대한 댓글
+    -- 부모의 값이 없는 자식은 올 수 없다? 
+insert into comment1(id, comment_writer, comment_contents, board1_id)
+	values(4, 'c writer4', 'c contents4', 5);
+    
+-- 부모데이터 삭제 
+-- 1,2번 게시글에는 댓글이 있고, 3,4번 게시글에는 댓글이 없음
+-- 		   [테이블명] where [삭제하고 싶은 것 (pk로 접근을 해야함)]
+-- 3번 게시글 삭제
+delete from board1 where id = 3;
+
+-- 2번 게시글 삭제
+delete from board1 where id = 2;
+
+-- 2번 게시글에 작성된 댓글 삭제( 댓글번호 3)
+-- 자식 데이터를 삭제 한 후에는 부모 데이터 삭제 가능
+delete from comment1 where id = 3;
+delete from board1 where id = 2;
+
+drop table if exists board2;
+drop table if exists comment2;
+
+-- 부모테이블 삭제시 자식 테이블 자동 삭제 
+create table board2(
+	id bigint,
+    board_writer varchar(20) not null, -- 작성자
+    board_contents varchar(500), -- 내용
+    constraint pk_board1 primary key(id)
+);
+
+create table comment2(
+	id bigint,
+    comment_writer varchar(20) not null, -- 댓글 작성자
+    comment_contents varchar(200), -- 댓글 내용
+    board2_id bigint, -- 어떤 게시글에 작성된 댓글인지 글번호 정보가 필요
+    constraint pk_comment2 primary key(id),
+    constraint fk_comment2 foreign key(board2_id) references board2(id) on delete cascade
+    -- on delete cascade :부모 데이터 삭제 시 자식 데이터도 함께 삭제
+);
+
+-- 게시글 4개 작성 
+insert into board2 (id, board_writer, board_contents)
+	values(1, 'writer1', 'contents1');
+insert into board2 (id, board_writer, board_contents)
+	values(2, 'writer2', 'contents2');
+insert into board2 (id, board_writer, board_contents)
+	values(3, 'writer3', 'contents3');
+insert into board2 (id, board_writer, board_contents)
+	values(4, 'writer4', 'contents4');
+select * from board2;
+
+-- 1,2번 게시글에 대한 댓글 작성
+insert into comment2(id, comment_writer, comment_contents, board2_id)
+	values(1, 'c writer1', 'c contents1', 1);
+insert into comment2(id, comment_writer, comment_contents, board2_id)
+	values(2, 'c writer2', 'c contents2', 1);
+insert into comment2(id, comment_writer, comment_contents, board2_id)
+	values(3, 'c writer3', 'c contents3', 2);
+    
+-- 3번 게시글 삭제 
+delete from board2 where id =3;
+-- 2번 게시글 삭제
+delete from board2 where id = 2;
+
+
+create table board3(
+	id bigint,
+    board_writer varchar(20) not null, -- 작성자
+    board_contents varchar(500), -- 내용
+    constraint pk_board1 primary key(id)
+);
+
+create table comment3(
+	id bigint,
+    comment_writer varchar(20) not null, -- 댓글 작성자
+    comment_contents varchar(200), -- 댓글 내용
+    board3_id bigint, -- 어떤 게시글에 작성된 댓글인지 글번호 정보가 필요
+    constraint pk_comment3 primary key(id),
+    constraint fk_comment3 foreign key(board3_id) references board3(id) on delete set null
+    -- on delete set null :부모 데이터 삭제 시 자식 데이터는 유지되지만 참조컬럼은 null이 됨
+);
+
+insert into board3 (id, board_writer, board_contents)
+	values(1, 'writer1', 'contents1');
+insert into board3 (id, board_writer, board_contents)
+	values(2, 'writer2', 'contents2');
+insert into board3 (id, board_writer, board_contents)
+	values(3, 'writer3', 'contents3');
+insert into board3 (id, board_writer, board_contents)
+	values(4, 'writer4', 'contents4');
+
+select * from board3;
+
+-- 1,2번 게시글에 대한 댓글 작성
+insert into comment3(id, comment_writer, comment_contents, board3_id)
+	values(1, 'c writer1', 'c contents1', 1);
+insert into comment3(id, comment_writer, comment_contents, board3_id)
+	values(2, 'c writer2', 'c contents2', 1);
+insert into comment3(id, comment_writer, comment_contents, board3_id)
+	values(3, 'c writer3', 'c contents3', 2);
+select * from board3;
+select * from comment3;
+
+-- 3번 게시글 삭제 
+delete from board3 where id =3;
+-- 2번 게시글 삭제
+delete from board3 where id = 2;
+select * from comment3;
+
+
+-- 수정쿼리 
+-- 1번 게시글 제목을 안녕하세요로 수정
+select * from board3;
+update board3 set board_contents='안녕하세요' where id =1;
+
+-- 4번 게시글 작성자를 작성자4, 내용을 곧 점심시간으로 수정
+update board3 set board_writer='작성자', board_contents='점심시간' where id =4; 
+
+-- id 컬럼에 자동 번호 적용하기
+
+drop table if exists board2;
+drop table if exists board2;
+
+create table board4(
+	id bigint auto_increment, -- auto_increment
+    board_writer varchar(20) not null, -- 작성자
+    board_contents varchar(500), -- 내용
+    constraint pk_board5 primary key(id)
+);
+insert into board4 (board_writer, board_contents)
+	values('writer1', 'contents1');
+insert into board4 (board_writer, board_contents)
+	values('writer2', 'contents2');
+select * from board4;
+
+drop table if exists book;
+create table book(
+id bigint auto_increment,
+b_bookname varchar(30) not null,
+b_publisher varchar (20) not null,
+b_price int,
+constraint pk_book primary key(id)
+);
+
+drop table if exists customer;
+
+create table customer(
+id bigint auto_increment,
+c_name varchar(20) not null,
+c_address varchar (50),
+c_phone varchar(20),
+constraint pk_book primary key(id)
+);
+
+drop table if exists orders;
+
+create table orders(
+id bigint auto_increment,
+customer_id bigint,
+book_id bigint,
+o_saleprice bigint,
+o_orderdate DATE,
+constraint pk_orders primary key(id),
+constraint fk_orders_c foreign key(customer_id) references customer(id),
+constraint fk_orders_b foreign key(book_id) references book(id)
+);
+
+
+insert into book(b_bookname, b_publisher, b_price)
+	values('축구의 역사', '굿스포츠', 7000);
+insert into book(b_bookname, b_publisher, b_price)
+	values('축구스카우팅 리포트', '나무수', 13000);
+insert into book(b_bookname, b_publisher, b_price)
+	values('축구의 이해', '대한미디어', 22000);
+insert into book(b_bookname, b_publisher, b_price)
+	values('배구 바이블', '대한미디어', 35000);
+insert into book(b_bookname, b_publisher, b_price)
+	values('피겨 교본', '굿스포츠', 8000);
+insert into book(b_bookname, b_publisher, b_price)
+	values('피칭 단계별기술', '굿스포츠', 6000);
+insert into book(b_bookname, b_publisher, b_price)
+	values('야구의 추억', '이상미디어', 20000);
+insert into book(b_bookname, b_publisher, b_price)
+	values('야구를 부탁해', '이상미디어', 13000);
+insert into book(b_bookname, b_publisher, b_price)
+	values('올림픽 이야기', '삼성당', 7500);
+insert into book(b_bookname, b_publisher, b_price)
+	values('olympic champions', 'pearson', 13000);
+select * from book;
+
+
+insert into customer(c_name, c_address, c_phone)
+	values('손흥민', '영국 런던', '010-5000-0001');
+insert into customer(c_name, c_address, c_phone)
+	values('김연아', '대한민국 서울', '010-6000-0001');
+insert into customer(c_name, c_address, c_phone)
+	values('김연경', '중국 상하이', '010-7000-0001');
+insert into customer(c_name, c_address, c_phone)
+	values('류현진', '캐나다 토론토', '010-8000-0001');
+insert into customer(c_name, c_address)
+	values('이강인', '스페인 마요르카');
+select * from customer;
+
+
+insert into orders(customer_id, book_id, o_saleprice, o_orderdate)
+	values(1, 1, 6000, '2021-07-01');
+insert into orders(customer_id, book_id, o_saleprice, o_orderdate)
+	values(1, 3, 21000, '2021-07-03');
+insert into orders(customer_id, book_id, o_saleprice, o_orderdate)
+	values(2, 5, 8000, '2021-07-03');
+insert into orders(customer_id, book_id, o_saleprice, o_orderdate)
+	values(3, 6, 6000, '2021-07-04');
+insert into orders(customer_id, book_id, o_saleprice, o_orderdate)
+    values(4, 7, 20000, '2021-07-05');
+insert into orders(customer_id, book_id, o_saleprice, o_orderdate)
+	values(1, 2, 12000, '2021-07-07');
+insert into orders(customer_id, book_id, o_saleprice, o_orderdate)
+	values(4, 8, 13000, '2021-07-07');
+insert into orders(customer_id, book_id, o_saleprice, o_orderdate)
+	values(3, 10, 12000, '2021-07-08');
+insert into orders(customer_id, book_id, o_saleprice, o_orderdate)
+	values(2, 10, 7000, '2021-07-09');
+insert into orders(customer_id, book_id, o_saleprice, o_orderdate)
+	values(3, 8, 13000, '2021-07-10');
+select * from orders;
+
+
+
+-- 1. 모든 도서의 가격과 도서명 조회 
+select b_bookname, b_price from book ;
+-- 2. 모든 출판사 이름 조회 
+select b_publisher from book;
+-- 2.1 중복값을 제외한 출판사 이름 조회 
+select distinct b_publisher from book;
+-- 3. BOOK테이블의 모든 내용 조회 
+select * from book;
+-- 4. 20000원 미만의 도서만 조회 
+select * from book where b_price <20000;
+-- 5. 10000원 이상 20000원 이하인 도서만 조회
+select * from book where b_price >=10000 and b_price <=20000;
+select * from book where b_price between 10000 and 20000;
+-- 6. 출판사가 굿스포츠 또는 대한미디어인 도서 조회 
+select * from book where b_publisher = '굿스포츠' or b_publisher = '대한미디어';
+-- 7. 도서명에 축구가 포함된 모든 도서를 조회
+select * from book where b_bookname like '%축구%';
+-- 8. 도서명의 두번째 글자가 구인 도서 조회
+select * from book where b_bookname like '_구%';
+-- 9. 축구 관련 도서 중 가격이 20000원 이상인 도서 조회
+select * from book where b_bookname like '%축구%' and b_price >= 20000;
+-- 10. 책 이름순으로 전체 도서 조회
+select * from book order by b_bookname asc;
+-- 11. 도서를 가격이 낮은 것 부터 조회하고 같은 가격일 경우 도서명을 가나다 순으로 조회
+select * from book order by b_price, b_bookname asc; 
+select * from book order by b_price asc, b_bookname asc; 
+
+-- 12. 주문 도서의 총 판매액 조회 
+select sum(o_saleprice) from orders;
+-- 13. 1번 고객이 주문한 도서 총 판매액 조회 
+select sum(o_saleprice) from orders where customer_id = 1; 
+-- 14. ORDERS 테이블로 부터 평균판매가, 최고판매가, 최저판매가 조회 
+select avg(o_saleprice), max(o_saleprice), min(o_saleprice) from orders;
+-- 15. 고객별로 주문한 도서의 총 수량과 총 판매액 조회
+select customer_id, count(book_id), sum(o_saleprice) from orders group by customer_id;
+-- 16. 가격이 8,000원 이상인 도서를 구매한 고객에 대해 고객별 주문 도서의 총 수량 조회 (GROUP BY 활용)
+--    (단, 8,000원 이상 도서 두 권 이상 구매한 고객만) 
+-- having : 그룹핑한 결과에서 조건 적용
+select customer_id, count(book_id), sum(o_saleprice) from orders where o_saleprice >= 8000 group by customer_id having count(book_id) <=2;
+-- 17. 김연아고객(고객번호 : 2) 총 구매액
+select sum(o_saleprice) from orders where customer_id = 2;
+select customer_id, sum(o_saleprice) from orders where customer_id=2 group by customer_id;
+select sum(o_saleprice) from orders where customer_id = ( select id from customer where c_name = '김연아');
+-- 18. 김연아 고객이 구매한 도서의 수
+select count(book_id) from orders where customer_id = 2;
+-- 19. 서점에 있는 도서의 총 권수
+select count(book_id) from orders;
+-- 20. 출판사의 총 수 
+select count(distinct b_publisher) from book;
+-- 21. 7월 4일 ~ 7일 사이에 주문한 도서의 주문번호 조회 
+select count(book_id) from orders where o_orderdate between'2021-07-04' and '2021-07-07';
+-- 22. 7월 4일 ~ 7일 사이에 주문하지 않은 도서의 주문번호 조회
+select count(book_id) from orders where o_orderdate not between'2021-07-04' and '2021-07-07';
