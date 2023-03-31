@@ -791,7 +791,7 @@ select customer_id, count(book_id), sum(o_saleprice) from orders group by custom
 -- 16. 가격이 8,000원 이상인 도서를 구매한 고객에 대해 고객별 주문 도서의 총 수량 조회 (GROUP BY 활용)
 --    (단, 8,000원 이상 도서 두 권 이상 구매한 고객만) 
 -- having : 그룹핑한 결과에서 조건 적용
-select customer_id, count(book_id), sum(o_saleprice) from orders where o_saleprice >= 8000 group by customer_id having count(book_id) <=2;
+select customer_id, count(id), sum(o_saleprice) from orders where o_saleprice >= 8000 group by customer_id having count(id) >=2;
 -- 17. 김연아고객(고객번호 : 2) 총 구매액
 select sum(o_saleprice) from orders where customer_id = 2;
 select customer_id, sum(o_saleprice) from orders where customer_id=2 group by customer_id;
@@ -804,5 +804,150 @@ select count(book_id) from orders;
 select count(distinct b_publisher) from book;
 -- 21. 7월 4일 ~ 7일 사이에 주문한 도서의 주문번호 조회 
 select count(book_id) from orders where o_orderdate between'2021-07-04' and '2021-07-07';
+select count(book_id) from orders where o_orderdate >= '2021-07-04' and o_orderdate <='2021-07-07';
+select count(book_id) from orders where o_orderdate >= str_to_date('2021-07-04', '%Y,-%m-%d') and o_orderdate <=str_to_date('2021-07-07', '%Y,-%m-%d');
+
 -- 22. 7월 4일 ~ 7일 사이에 주문하지 않은 도서의 주문번호 조회
 select count(book_id) from orders where o_orderdate not between'2021-07-04' and '2021-07-07';
+
+
+
+-- 23. 고객, 주문 테이블 조인하여 고객번호 순으로 정렬
+select * from customer c, orders o where c.id = o.customer_id order by c.id;
+select * from customer c inner join orders o on c.id = o.customer_id;
+-- 24. 고객이름(CUSTOMER), 고객이 주문한 도서 가격(ORDERS) 조회 
+select c.c_name, o.o_saleprice from customer c, orders o where c.id = o.customer_id;
+-- 25. 고객별(GROUP)로 주문한 도서의 총 판매액(SUM)과 고객이름을 조회하고 조회 결과를 가나다 순으로 정렬 
+select c.c_name, sum(o.o_saleprice) from customer c, orders o where c.id = o.customer_id group by  c.c_name order by c.c_name;
+-- 26. 고객명과 고객이 주문한 도서명을 조회(3테이블 조인)
+select c.c_name, b.b_bookname from customer c, orders o, book b where b.id = o.book_id and c.id = o.customer_id;
+-- 27. 2만원(SALEPRICE) 이상 도서를 주문한 고객의 이름과 도서명을 조회 
+select c.c_name, b.b_bookname from customer c, orders o, book b 
+			where b.id = o.book_id and c.id = o.customer_id and o.o_saleprice >= 20000;
+-- 28. 손흥민 고객의 총 구매액과 고객명을 함께 조회
+select c.c_name, sum(o.o_saleprice) from customer c, orders o 
+			where c.id = o.customer_id and o.customer_id =( select id from customer where c_name = '손흥민') group by c.c_name;
+-- 29. 손흥민 고객의 총 구매수량과 고객명을 함께 조회
+select c.c_name, count(o.o_saleprice) from customer c, orders o where c.id = o.customer_id 
+					and o.customer_id =( select id from customer where c_name = '손흥민') group by c.c_name;  -- ?
+                    
+select c.c_name, count(o.id) from customer c, orders o where c.id = o.customer_id 
+					and o.customer_id =( select id from customer where c_name = '손흥민') group by c.c_name;
+-- 30. 가장 비싼 도서의 이름을 조회 
+select b_bookname from book where b_price = ( select max(b_price) from book);
+-- 31. 책을 구매한 이력이 있는 고객의 이름을 조회
+select * from orders;
+select c_name from customer where id = 1 or id =2 or id = 3 or id = 4;
+select c_name from customer where id in(1,2,3,4);
+select c_name from customer where id in(select customer_id from orders);
+-- ↑ 선생님, 나 ↓
+select c.c_name from customer c, orders o where c.id = o.customer_id group by c.c_name having count(o.id) >=1;
+-- 32. 도서의 가격(PRICE)과 판매가격(SALEPRICE)의 차이가 가장 많이 나는 주문 조회 
+select * from book;
+select * from orders;
+select b.b_price - o.o_saleprice from book b, orders o where b.id=o.book_id;
+select max(b.b_price - o.o_saleprice) from book b, orders o where b.id=o.book_id;
+select * from book b, orders o where b.id=o.book_id and b.b_price - o.o_saleprice 
+			=(select max(b.b_price - o.o_saleprice) from book b, orders o where b.id=o.book_id);
+            -- ↑ 선생님 소이↓  나↓↓
+select * from customer c, book b, orders o where c.id = o.customer_id and b.id = o.book_id and b.b_price-o.o_saleprice 
+			= (select max(b.b_price-o.o_saleprice) from book b, orders o where b.id = o.book_id) ;
+            
+select * from book b, customer c, orders o where b.id = o.book_id and c.id = o.customer_id and b.b_price - o.o_saleprice =( select max(b.b_price - o.o_saleprice) from book b, orders o where b.id=o.book_id);
+
+-- 33. 고객별 평균 구매 금액이 도서의 판매 평균 금액 보다 높은 고객의 이름 조회 
+select avg(o_saleprice) from orders; -- 11800
+
+select c.c_name from customer c, orders o, book b where c.id = o.customer_id 
+				group by c.c_name having avg(o.o_saleprice) > (select avg(o_saleprice) from orders);
+-- 34. 고객번호가 5인 고객의 주소를 대한민국 인천으로 변경 
+update customer set c_address = '대한민국 인천' where id = 5;
+select * from customer;
+-- 35. 김씨 성을 가진 고객이 주문한 총 판매액 조회
+select sum(o.o_saleprice) from customer c, orders o where c.id = o.customer_id and c_name like '김%';
+select sum(o_saleprice) from orders where customer_id=2 or customer_id=3;
+select sum(o_saleprice) from orders where customer_id in (2,3);
+select sum(o_saleprice) from orders where customer_id in(select id from customer where c_name like '김%');
+
+
+-- 테이블 구조 변경 (alter)
+drop table student;
+create table student(
+	id bigint,
+    s_name varchar(20),
+    s_moblie int
+);
+
+-- 기존 컬럼에 제약조건 추가하는 법
+alter table student add constraint primary key(id);
+
+desc student;
+-- 기존 컬럼 타입 변경
+alter table student modify s_moblie varchar(30);
+-- 새로운 컬럼 추가
+alter table student add s_major varchar(30);
+-- 컬럼이름 변경
+alter table student change s_moblie s_phone varchar(30);
+-- 컬럼 삭제
+alter table student drop s_major;
+
+
+
+create table member_table(
+	id bigint auto_increment primary key,
+    member_email varchar(50) not null unique,
+    member_name varchar(20) not null,
+    member_password varchar(20) not null
+);
+
+create table category_table(
+	id bigint auto_increment primary key,
+    category_name varchar(20) not null unique
+);
+
+drop table if exists board_table;
+create table board_table(
+	id bigint auto_increment primary key,
+    board_title varchar(50) not null,
+    board_writer varchar(20) not null,
+    board_contents varchar(500),
+    board_hits int default 0,
+    board_created_time datetime default now(),
+    board_update_time datetime on update now(),
+    board_file_attached int,
+    category_id bigint,
+    member_id bigint,
+    constraint fk_board_member foreign key(member_id) references member_table(id) on delete cascade,
+    constraint fk_board_category foreign key(category_id) references category_table(id) on delete set null
+);
+
+drop table if exists board_file_table;
+create table board_file_table(
+	id bigint auto_increment primary key,
+    original_file_name varchar(100), -- 사용자가 업로드한 파일의 이름
+    stored_file_name varchar(100), -- 관리용 파일 이름(파일이름 생성 로직은 backend에서)
+    -- 증명사진 .jpg 91845798217498237-증명사진.jpb
+    board_id bigint,
+    constraint fk_board_file foreign key(board_id) references board_table(id) on delete cascade
+);
+
+drop table if exists comment_table;
+create table comment_table(
+	id bigint auto_increment primary key,
+    comment_writer varchar(20) not null,
+    comment_contents varchar(200) not null,
+    comment_create_time datetime default now(),
+    member_id bigint,
+    board_id bigint,
+    constraint fk_comment_board foreign key(board_id) references board_table(id) on delete cascade,
+    constraint fk_comment_member foreign key(member_id) references member_table(id) on delete cascade
+);
+
+drop table if exists good_table;
+create table good_table(
+	id bigint auto_increment primary key,
+    comment_id bigint,
+    member_id bigint,
+    constraint fk_good_comment foreign key(comment_id) references comment_table(id) on delete cascade,
+    constraint fk_good_member foreign key(member_id) references member_table(id) on delete cascade
+);
