@@ -16,9 +16,16 @@ drop user user1@localhost;
 -- database999에 대한 접속권한을 부여하고 
 -- 해당 계정으로 접속해서 database999 사용되는지 확인
 
-create user user2@localhost identified by '9999';
-create database database999;
-grant all privileges on database999.* to user2@localhost;
+create user user_dbclass@localhost identified by '1234';
+create database db_dbclass;
+grant all privileges on db_dbclass.* to user_dbclass@localhost;
 
 use mysql;
 select user from user;
+
+create user user_db@localhost identified by '1234';
+create database db;
+grant all privileges on db_db.* to user_db@localhost;
+
+
+

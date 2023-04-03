@@ -1,4 +1,4 @@
-use db_dbclass;
+use db_dbclass1;
 -- 학생 테이블 생성
 create table Student(
 id bigint,
@@ -529,7 +529,7 @@ insert into comment1(id, comment_writer, comment_contents, board1_id)
     -- 부모의 값이 없는 자식은 올 수 없다? 
 insert into comment1(id, comment_writer, comment_contents, board1_id)
 	values(4, 'c writer4', 'c contents4', 5);
-    
+select * from comment1;
 -- 부모데이터 삭제 
 -- 1,2번 게시글에는 댓글이 있고, 3,4번 게시글에는 댓글이 없음
 -- 		   [테이블명] where [삭제하고 싶은 것 (pk로 접근을 해야함)]
@@ -907,18 +907,22 @@ create table category_table(
 
 drop table if exists board_table;
 create table board_table(
-	id bigint auto_increment primary key,
-    board_title varchar(50) not null,
-    board_writer varchar(20) not null,
-    board_contents varchar(500),
-    board_hits int default 0,
-    board_created_time datetime default now(),
-    board_update_time datetime on update now(),
-    board_file_attached int,
-    category_id bigint,
-    member_id bigint,
-    constraint fk_board_member foreign key(member_id) references member_table(id) on delete cascade,
-    constraint fk_board_category foreign key(category_id) references category_table(id) on delete set null
+id bigint auto_increment,
+board_title varchar(50) not null,
+board_writer varchar(20) not null,
+board_contents varchar(500),
+board_hits int default 0, -- 조회수
+board_created_time datetime default now(), -- 작성 시간
+board_updated_time datetime on update now(), -- 수정 시간
+board_file_attached int default 0 , -- 파일 첨부 여부 (없으면 0, 있으면 1)
+member_id bigint,
+category_id bigint,
+constraint pk_board_table primary key(id),
+constraint fk_board_table_m foreign key(member_id) -- 멤버 삭제시 게시글도 전부 삭제 
+references member_table(id) on delete cascade,
+constraint fk_board_table_c foreign key(category_id)
+	references category_table(id) on delete set null -- 카테고리 삭제시 게시글은 삭제되지 않고 카테고리부분만 null 로 처리됨
+
 );
 
 drop table if exists board_file_table;
@@ -946,8 +950,194 @@ create table comment_table(
 drop table if exists good_table;
 create table good_table(
 	id bigint auto_increment primary key,
-    comment_id bigint,
-    member_id bigint,
+    comment_id bigint, -- 어던 글에 좋아요를 하고
+    member_id bigint, -- 누가 좋아요를 하였는가
     constraint fk_good_comment foreign key(comment_id) references comment_table(id) on delete cascade,
     constraint fk_good_member foreign key(member_id) references member_table(id) on delete cascade
 );
+
+drop table if exists member_table;
+drop table if exists category_table;
+drop table if exists board_table;
+drop table if exists board_file_table;
+drop table if exists comment_table;
+drop table if exists good_table;
+
+-- 회원 기능
+-- 1. 회원가입
+insert into  member_table(member_email, member_name, member_password)
+values('aaa@naver.com','한명','1111');
+insert into  member_table(member_email, member_name, member_password)
+values('bbb@naver.com','두명','2222');
+insert into  member_table(member_email, member_name, member_password)
+values('ccc@naver.com','세명','3333');
+insert into  member_table(member_email, member_name, member_password)
+values('ddd@naver.com','네명','4444');
+select * from member_table;
+-- 2. 이메일 중복체크 
+-- 기존 가입된 이메일로 가입하려고 한다면
+select member_email from member_table where member_email = 'aaa@naver.com';
+
+-- 기존 가입되어 있지 않은 이메일로 가입하려고 한다면
+select member_email from member_table where member_email = 'ddd@naver.com';
+
+-- 3. 로그인
+select * from member_table where member_email = 'aaa@naver.com' and member_password = '1111';
+select * from member_table where member_email = 'bbb@naver.com' and member_password = '2222';
+-- 4. 전체 회원 목록 조회 
+select * from member_table;
+-- 5. 특정 회원만 조회 
+select * from member_table where id = 1;
+select * from member_table where member_email = 'aaa@naver.com';
+-- 6. 회원정보 수정화면 요청 
+select * from member_table where member_email = 'aaa@naver.com';
+-- 7. 회원정보 수정 처리(비밀번호 변경)
+update member_table set member_password = '1234' where id = 1;
+-- 8. 회원 삭제 또는 탈퇴 
+delete from member_table where id = 2; 
+
+-- 게시글 카테고리 
+-- 게시판 카테고리는 자유게시판, 공지사항, 가입인사 세가지가 있음.
+insert into category_table(category_name) values('자유게시판');
+insert into category_table(category_name) values('공지사항');
+insert into category_table(category_name) values('가입인사');
+-- 카테고리 입력된 값에 오름차순으로 정렬됨
+select * from category_table;
+
+-- 게시판 기능 
+-- 1. 게시글 작성(파일첨부 x) 3개 이상 
+SELECT * from board_table;
+
+-- 1번 회원이 자유게시판 글 2개, 공지사항 글 1개 작성 
+insert into board_table(board_title, board_writer, board_contents, member_id, category_id)
+values('안녕하세요', '한명', '처음써보는 글 입니다' ,1 ,1);
+insert into board_table(board_title, board_writer, board_contents, member_id, category_id)
+values('반가워요', '한명', '자유게시판',1 ,1);
+insert into board_table(board_title, board_writer, board_contents, member_id, category_id)
+values('하이하이', '한명', '공지사항' ,1 ,2);
+SELECT * from board_table;
+
+-- 2번 회원이 자유게시판 글 3개 작성
+insert into board_table(board_title, board_writer, board_contents, member_id, category_id)
+values('자유게시판1', '두명', '내용은 없음1', 2, 1);
+insert into board_table(board_title, board_writer, board_contents, member_id, category_id)
+values('자유게시판2', '두명', '내용은 없음2', 2, 1);
+insert into board_table(board_title, board_writer, board_contents, member_id, category_id)
+values('자유게시판3', '두명', '내용은 없음3', 2, 1);
+SELECT * from board_table;
+
+-- 3번 회원이 가입인사 글 1개 작성 
+insert into board_table(board_title, board_writer, board_contents, member_id, category_id)
+values('가입인사', '세명', '가입인사 입니다', 3, 3);
+SELECT * from board_table;
+
+-- 1.1. 게시글 작성(파일첨부 o)
+insert into board_file_table(original_file_name, stored_file_name, board_id) values ('안녕하세요.jpg', '2287391898172','8'); -- 8번은 게시글 넘버
+insert into board_table(board_title, board_writer, board_contents, board_file_attached, member_id, category_id)
+values('안녕하세요','세명','파일첨부한 게시글',1,3,3);
+SELECT * from board_table;
+select *from board_file_table;
+
+-- 2번 회원이 파일있는 자유게시판 글 2개 작성
+insert into board_file_table(original_file_name, stored_file_name, board_id) values ('2번 안녕하세요.jpg', '2287391898123-안녕.jpg','9');
+insert into board_file_table(original_file_name, stored_file_name, board_id) values ('2번 반갑습니다.jpg', '2287391898123-반가워요.jpg','10');
+insert into board_table(board_title, board_writer, board_contents, board_file_attached, member_id, category_id)
+values('2번 안녕하세요','두명','파일첨부한 게시글1', 1, 2, 2);
+insert into board_table(board_title, board_writer, board_contents, board_file_attached, member_id, category_id)
+values('2번 반갑습니다','두명','파일첨부한 게시글2', 1, 2, 2);
+
+-- 2. 게시글 목록 조회 
+SELECT * from category_table;
+
+-- 2.1 전체글 목록 조회
+SELECT * from board_table;
+
+-- 2.2 자유게시판 목록 조회 
+SELECT * from board_table where category_id = 2;
+
+-- 2.3 공지사항 목록 조회 
+SELECT * from board_table where category_id = 3;
+
+-- 2.4 목록 조회시 카테고리 이름도 함께 나오게 조회
+SELECT * from board_table, category_table;
+SELECT * from board_table b, category_table c where b.category_id = c.id;
+
+-- 3. 2번 게시글 조회 (조회수 처리 필요함)
+update board_table set board_hits = board_hits + 1 where id =2;
+SELECT * from board_table;
+-- 3.1. 파일 첨부된 게시글 조회 (게시글 내용과 파일을 함께)
+update board_table set board_hits = board_hits + 1 where id =8;
+update board_file_table set board_hits = board_hits + 1 where id =8;
+-- 조인 활용
+select * from board_table b, board_file_table f where b.id=f.board_id and b.id= 8;
+-- 쿼리 두 번 수행
+select * from board_table where id = 8;
+select * from board_file_table where board_id = 8;
+SELECT * from board_file_table;
+-- 4. 1번 회원이 자유게시판에 첫번째로 작성한 게시글의 제목, 내용 수정
+SELECT * from board_table;
+update board_table set  board_title = '바꾸기' , board_contents = '내용바꾸기' where category_id= 1 and id = 1;
+
+-- 5. 2번 회원이 자유게시판에 첫번째로 작성한 게시글 삭제 
+delete from board_table where id =4;
+-- 7. 페이징 처리(한 페이지당 글 3개씩) 
+select * from board_table;
+select * from board_table order by id desc;
+-- 7.1. 첫번째 페이지
+select * from board_table order by id desc limit 0, 3; -- 있는 수 중 1번부터 3개
+-- 7.2. 두번째 페이지
+select * from board_table order by id desc limit 3, 3; -- 그다음 수(4)부터 3개
+-- 7.3. 세번째 페이지 
+select * from board_table order by id desc limit 6, 3;
+-- 정렬기준은 조회수, 한페이지당 글 5개씩 볼 때 1페이지
+select * from board_table order by board_hits desc limit 0,5;
+-- 전체 글 갯수
+select count(id) from board_table;
+-- 8. 검색(글제목 기준)
+select * from board_table where board_title = '바꾸기';
+select * from board_table where board_title like '%2%' order by id asc;
+-- 8.1 검색결과를 오래된 순으로 조회 
+select * from board_table where board_title like '%2%' order by id asc;
+
+-- 8.2 검색결과를 조회수 내림차순으로 조회 
+select * from board_table where board_title like '%2%' order by id desc;
+-- 검색결과를 페이징 처리 (검색결과 중 첫 페이지( 한페이지당 글 2개씩 나온다고 가정)
+select * from board_table where board_title like '%2%' order by id asc limit 0 ,2;
+select * from board_table where board_title like '%2%' order by id asc limit 2 ,2;
+-- 8.3 검색결과 페이징 처리 //놔두기
+select * from board_table limit 0,3;
+select * from board_table limit 3,3;
+select * from board_table limit 6,4;
+
+-- 댓글 기능 
+-- 1. 댓글 작성 
+-- 1.1. 1번 회원이 1번 게시글에 댓글 작성 
+insert into comment_table(comment_writer, comment_contents, member_id, board_id)
+values('한명', '댓글1', 1, 1);
+-- 1.2. 2번 회원이 1번 게시글에 댓글 작성 
+insert into comment_table(comment_writer, comment_contents, member_id, board_id)
+values('두명', '댓글2', 2, 1);
+select * from comment_table;
+-- 2. 댓글 조회
+select * from board_table where id =1;
+select * from comment_table where board_id =1;
+select * from board_table b, comment_table c where b.id=c.board_id; -- 조인 보다는 게시글 목록따로 댓글목록 따로 가져가자
+
+-- 3. 댓글 좋아요 
+-- 3.1. 1번 회원이 2번 회원이 작성한 댓글에 좋아요 클릭
+insert into good_table(comment_id, member_id)
+values(2,1);
+select * from good_table;
+-- 3.2. 3번 회원이 2번 회원이 작성한 댓글에 좋아요 클릭 
+insert into good_table(comment_id, member_id)
+values(2,3);
+-- 나중에 좋아요를 만들때 사람당 여러번 할 수 없음 종아요를 하기 전에 먼저 이 회원이 좋아요를 했는지 안했는지 봐야함
+select id from good_table where comment_id =2 and member_id = 1;
+-- 좋아요를 했다면 좋아요 취소
+delete from good_table where id= 3;
+insert into good_table(comment_id, member_id)
+values(2,3);
+
+-- 4. 댓글 조회시 좋아요 갯수도 함께 조회
+select c.*, count(g.comment_id) from comment_table c, good_table g where c.id = g.comment_id group by g.comment_id;
+select count(id) from good_table  where comment_id =2;
